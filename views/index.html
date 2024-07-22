@@ -1,16 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Index</title>
-    <link rel="stylesheet" href="../css/style.css" />
+    <title>File Uploader</title>
+    <style>
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f4f4f4; }
+        #progressBar { width: 100%; background-color: #f3f3f3; border: 1px solid #ccc; margin-top: 10px; }
+        #progress { height: 20px; background-color: #4caf50; width: 0%; position: relative; }
+        #progressText { position: absolute; width: 100%; text-align: center; line-height: 20px; color: #fff; font-weight: bold; }
+    </style>
 </head>
-
 <body>
-    <h1>Index</h1>
-</body>
+    <h1>File Uploader</h1>
+    <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="files" multiple />
+        <button type="submit">Upload</button>
+    </form>
+    <div id="progressBar">
+        <div id="progress">
+            <div id="progressText">0%</div>
+        </div>
+    </div>
+    <h2>Uploaded Files</h2>
+    <table id="fileList">
+        <tr>
+            <th>Filename</th>
+            <th>Actions</th>
+        </tr>
+    </table>
+    <script>
+        // Handle form submission with AJAX
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the form from submitting the default way
 
+            const formData = new FormData(this);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            // Update progress bar
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    const progress = document.getElementById('progress');
+                    const progressText = document.getElementById('progressText');
+                    progress.style.width = percentComplete + '%';
+                    progressText.textContent = Math.round(percentComplete) + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // Reload the file list after upload
+                    loadFileList();
+                } else {
+                    console.error('Upload failed');
+                }
+            };
+
+            xhr.send(formData);
+        });
+
+        // Load file list
+        function loadFileList() {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/files', true);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const files = JSON.parse(xhr.responseText);
+                    const fileList = document.getElementById('fileList');
+                    fileList.innerHTML = `
+                        <tr>
+                            <th>Filename</th>
+                            <th>Actions</th>
+                        </tr>
+                        ${files.map(file => `
+                            <tr>
+                                <td>${file}</td>
+                                <td>
+                                    <a href="/download/${file}">Download</a> |
+                                    <a href="/rename/${file}">Rename</a> |
+                                    <a href="/delete/${file}">Delete</a>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    `;
+                }
+            };
+            xhr.send();
+        }
+
+        // Initial load of file list
+        loadFileList();
+    </script>
+</body>
 </html>
